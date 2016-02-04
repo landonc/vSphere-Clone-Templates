@@ -2,7 +2,7 @@
 .SYNOPSIS
 
 .DESCRIPTION
-Creates an HTML file with direct VMRC links for VMware VMs located in vCenter.  It is meant to provide the ability to console to a VM when vCenter is offline during maintenance.
+Automates the process of cloning out a base template to multiple clones in specific folders with specific networks setup.
 
 .PARAMETER
 -vcenter
@@ -11,15 +11,15 @@ Creates an HTML file with direct VMRC links for VMware VMs located in vCenter.  
     The target datacenter to work/search within
 -cluster
     The cluster in which to deploy the cloned templates
--vmFolder
-    [Optional] The folder path to the VMs you want to create VMRC links.  If not defined will provide links for all VMs in the defined Cluster
+-templateDS
+    The name of the datastore you want to put the template clones into
 -credPath
     The path to the VICredentialStore file that contains the necessary credentials to connect to vCenter and each ESXi host directly
--outFile
-    The file path to where you want the output stored
+-csvFile
+    The file that contains all the details of the TemplateSource, TemplateName, NetworkName, DestinationPath
 
 .EXAMPLE
-GenerateLinks -vcenter yourvcenterserver.domain.local -datacenter 'Datacenter Name' -cluster 'Cluster String' -vmFolder 'Servers\Windows 2003' -credPath 'c:\temp\mycredentails.xml' -outFile 'c:\temp\vmrclinks.html'
+.\CloneTemplates.ps1 -vcenter wclabvcenter01.itlab.local -datacenter 'Datacenter Name' -cluster 'Cluster String' -templateDS 'DATASTORE NAME' -credPath 'c:\temp\mycredentails.xml' -csvFile 'c:\temp\templates.csv'
 #>
 
 ############# GLOBALS ##############
@@ -31,28 +31,12 @@ param(
     # Cluster Filter
     [String]$cluster="",
     # Folder path containing VMs you want to create direct VMRC links for
-    #$vmFolder="NetLok\Custom VPN's"
     [String]$templateDS=$null,
     # Credential File Path
     [String]$credPath = "",
 	# Credential File Path
     [String]$csvFile = ""
 )
-############# END GLOBALS ##########
-
-############# GLOBALS ##############
-# Datacenter to work from
-#$datacenter="WC IT LAB"
-
-# Cluster Name
-#$cluster="WC IT LAB"
-
-# Template datastore
-#$templateDS="WCLABIT_DEPLOY"
-
-# Golden template to work off of
-$goldenTemp="WIN2012R2_BASE"
-
 ############# END GLOBALS ##########
 
 # Check if VMware PowerCLI is loaded
@@ -94,7 +78,6 @@ $clones = Import-Csv $csvFile
 # Get the credential from the file
 $credential = Get-VICredentialStoreItem -Host $vcenter -File $credPath
 
-
 # Connect to vCenter
 Connect-VIServer -Server $vcenter -User $credential.User -Password $credential.Password
 
@@ -104,18 +87,23 @@ $vmHost = Get-Cluster -Name $cluster | Get-VMHost | Select -first 1
 ############# SCRIPT ###############
 
 ForEach($clone in $clones){
+	$goldenTemp = $clone.TemplateSource
 	$newTempName = $clone.TemplateName
 	$newNetworkName = $clone.NetworkName
 	$vmFolder = $clone.DestinationPath
 	
-	if($vmFolder.Length > 0){
+    Write-Host $vmFolder.Length
+
+	if($vmFolder.Length -gt 0){
 		$destFolder = Get-FolderFromPath($vmFolder)
 		if($destFolder -eq $null){
 		    Write-Host "ERROR: $vmFolder Path NOT FOUND!  Halting."
 		    Break
 		}
 	}else{
-		Write-Host "ERROR: $vmFolder Path NOT SPECIFIED IN CSV!  Halting."
+        Write-Host "DestinationPath " + $vmFolder.Length
+		Write-Host "ERROR: DestinationPath NOT SPECIFIED IN CSV!  Halting."
+        break;
 	}
 	
 	# Get Datastore by String
