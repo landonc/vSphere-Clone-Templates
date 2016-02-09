@@ -38,5 +38,5 @@ PARAMETER
 
 #####EXAMPLE
 ```
-.\CloneTemplates.ps1 -vcenter wclabvcenter01.itlab.local -datacenter 'Datacenter Name' -cluster 'Cluster String' -templateDS 'DATASTORE NAME' -credPath 'c:\temp\mycredentails.xml' -csvFile 'c:\temp\templates.csv'
+.\CloneTemplates.ps1 -vcenter vcenterFQDN -datacenter 'Datacenter Name' -cluster 'Cluster String' -templateDS 'DATASTORE NAME' -credPath 'c:\temp\mycredentails.xml' -csvFile 'c:\temp\templates.csv'
 ```
